@@ -1,0 +1,5 @@
+1. A book title must start with a capital letter and end with a capital letter.
+
+2. A book title cannot have more than two lower-case words between capitalized words. If there are three lower-case words after a capitalized word, then the last capitalized word is taken as the last word of the title and those three lower-case words are disregarded.
+
+

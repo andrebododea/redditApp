@@ -8,35 +8,65 @@ import json
 # uses openlibrary api (https://openlibrary.org/dev/docs/api/search)
 # creates an openlibrary search url and searches the database for all possible permutations of the search terms.
 # if it finds a match for a title, it stores that title in a database.
+
+
+# follows the rules to parse a comment into an array of book titles
+def book_title_parser(terms):
+    firstCapitalIndex = -1
+    mostRecentCapitalIndex = -1 
+    titles = [] 
+    for i in xrange(0,len(terms)):
+        if terms[i].isupper():
+            if firstCapitalIndex == -1:
+                firstCapitalIndex = i
+                mostRecentCapitalIndex = i
+            elif firstCapitalIndex > -1:
+                mostRecentCapitalIndex = i
+        else:
+            if firstCapitalIndex != -1 and mostRecentCapitalIndex != -1:
+                distance = i - mostRecentCapitalIndex    
+                if distance > 2:
+                    titles = " ".join(terms[firstCapitalIndex:mostRecentCapitalIndex+1])
+                    firstCapitalIndex = -1
+                    mostRecentCapitalIndex = -1
+    
+    return titles
+            
+
+
 def book_title_search(searchTerms):		
-	permutations = []
-	for i in xrange(0,len(searchTerms)+1):
-		for j in xrange(i+1,len(searchTerms)+1):
-			permutations.append(searchTerms[i:j])
+	
+        # Creates an array with all possible permutations of the search terms. Will use these permutations to check for titles.
+        permutations = []
+        for i in xrange(0,len(searchTerms)+1):
+            for j in xrange(i+1,len(searchTerms)+1):
+                permutations.append(searchTerms[i:j])
+        
+        # makes each permutation into a string, with each term serparated by spaces
+        for i in xrange(0,len(permutations)):
+            permutations[i] = " ".join(permutations[i])
+            print permutations[i]
 
-	API_url = "http://openlibrary.org/search.json?title="
-	for term in permutations:
+        API_url = "http://openlibrary.org/search.json?title="
+	for term in searchTerms:
 		url = API_url
-		for t in term:
-			url += str(t)+'+'
+                url += str(term)+'+'
 		url = url[:-1] # removes the trailing '+'
-
 
 		# TESTING
 		print url
 		# TESTING
 	
-                # makes the array of terms into a string, with each term serparated by spaces
-                stringTerm = " ".join(term)
 
-		json_data = urllib2.urlopen(url)
-		data = json.load(json_data)
-		# iterate through all returned values of the particular search
-		for book in data["docs"]:
-                        asciiTitle = book["title"].encode('ascii','ignore')
-			
-			if asciiTitle == stringTerm:
-				print "we've got a match! --> " + asciiTitle +" ==? "+ stringTerm
+        json_data = urllib2.urlopen(url)
+        data = json.load(json_data)
+        # iterate through all returned values of the particular search
+        for book in data["docs"]:
+             asciiTitle = book["title"].encode('ascii','ignore')
+               
+             for perm in permutations:  
+                 if asciiTitle == perm:
+                        print "we've got a match! --> " + asciiTitle +" ==? "+ stringTerm
 
 # create the reddit object, r
 r = praw.Reddit(user_agent = 'Test Script')
@@ -53,14 +83,12 @@ array_of_words = []
 # iterating through all the comments and making each comment into an array of words 
 for comment in flat_comments:
 	array = str(comment.body).split()
-	titleWords = filter(str.istitle,array) # array only with the words that start with a capital letter
-	
-	# get rid of any non-alphanumeric characters except spaces and colons
-	for i in xrange(len(titleWords)):
-		titleWords[i] = re.sub(r'[^a-zA-Z0-9 :]', '', titleWords[i])
-		print titleWords[i]
-	
-	print titleWords
-	book_title_search(titleWords)
+	# get rid of any non-alphanumeric characters except spaces, colons, commas, and ampersands
+	for i in xrange(len(array)):
+		array[i] = re.sub(r'[^a-zA-Z0-9 ,:&]', '', array[i])
+
+        # stores a list of parsed book titles from the current comment in arrayOfTitles
+	arrayOfTitles = book_title_parser(array)
+        print arrayOfTitles
 
 # Next step is to run the words from titleWords through a database of books to return titles of books and discard other words (nonsensical letters etc...)
